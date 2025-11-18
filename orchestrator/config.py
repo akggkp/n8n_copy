@@ -7,6 +7,9 @@ class Config:
     # Service Name
     SERVICE_NAME = "Trading AI Orchestrator"
     
+    # Logging
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    
     # Celery Configuration
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'amqp://guest:guest@rabbitmq:5672/')
     CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://:password@redis:6379/0')

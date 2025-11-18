@@ -4,8 +4,7 @@ import sys
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from werkzeug.utils import secure_filename
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -13,13 +12,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from config import Config
 from app.tasks import process_video_pipeline
 from app.celery_app import celery_app
+from app.models import db, ProcessedVideo, ProvenStrategy
 
 app = Flask(__name__)
-CORS(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = Config.DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = Config.VIDEO_WATCH_DIR
 
-# Database
-engine = create_engine(Config.DATABASE_URL)
-Session = sessionmaker(bind=engine)
+
+db.init_app(app)
+CORS(app)
 
 @app.route('/')
 def index():
@@ -30,40 +32,17 @@ def index():
 def get_stats():
     """Get pipeline statistics"""
     try:
-        session = Session()
-        
-        # Total videos
-        total = session.execute(
-            text("SELECT COUNT(*) FROM processed_videos")
-        ).scalar()
-        
-        # Completed
-        completed = session.execute(
-            text("SELECT COUNT(*) FROM processed_videos WHERE status = 'completed'")
-        ).scalar()
-        
-        # Processing
-        processing = session.execute(
-            text("SELECT COUNT(*) FROM processed_videos WHERE status = 'processing'")
-        ).scalar()
-        
-        # Failed
-        failed = session.execute(
-            text("SELECT COUNT(*) FROM processed_videos WHERE status = 'failed'")
-        ).scalar()
-        
-        # Profitable strategies
-        profitable = session.execute(
-            text("SELECT COUNT(*) FROM proven_strategies")
-        ).scalar() or 0
-        
-        session.close()
+        total = db.session.query(ProcessedVideo).count()
+        completed = db.session.query(ProcessedVideo).filter_by(status='completed').count()
+        processing = db.session.query(ProcessedVideo).filter_by(status='processing').count()
+        failed = db.session.query(ProcessedVideo).filter_by(status='failed').count()
+        profitable = db.session.query(ProvenStrategy).count()
         
         return jsonify({
-            'total_videos': total or 0,
-            'completed': completed or 0,
-            'processing': processing or 0,
-            'failed': failed or 0,
+            'total_videos': total,
+            'completed': completed,
+            'processing': processing,
+            'failed': failed,
             'profitable_strategies': profitable
         })
         
@@ -75,33 +54,9 @@ def get_videos():
     """Get list of videos with status"""
     try:
         limit = request.args.get('limit', 20, type=int)
-        session = Session()
+        videos = db.session.query(ProcessedVideo).order_by(ProcessedVideo.created_at.desc()).limit(limit).all()
         
-        videos = session.execute(
-            text("""
-                SELECT video_id, filename, status, 
-                       processing_time_seconds, processed_at, created_at
-                FROM processed_videos
-                ORDER BY created_at DESC
-                LIMIT :limit
-            """),
-            {'limit': limit}
-        ).fetchall()
-        
-        session.close()
-        
-        result = []
-        for v in videos:
-            result.append({
-                'video_id': v[0],
-                'filename': v[1],
-                'status': v[2] or 'pending',
-                'processing_time': float(v[3]) if v[3] else None,
-                'processed_at': v[4].isoformat() if v[4] else None,
-                'created_at': v[5].isoformat() if v[5] else None
-            })
-        
-        return jsonify({'videos': result})
+        return jsonify({'videos': [v.to_dict() for v in videos]})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -110,43 +65,36 @@ def get_videos():
 def get_profitable_strategies():
     """Get list of profitable strategies"""
     try:
-        session = Session()
+        strategies = db.session.query(ProvenStrategy).order_by(ProvenStrategy.created_at.desc()).limit(10).all()
         
-        strategies = session.execute(
-            text("""
-                SELECT video_id, strategy_name, backtest_results, created_at
-                FROM proven_strategies
-                ORDER BY created_at DESC
-                LIMIT 10
-            """)
-        ).fetchall()
-        
-        session.close()
-        
-        result = []
-        for s in strategies:
-            # Parse backtest results
-            import ast
-            try:
-                results = ast.literal_eval(s[2]) if isinstance(s[2], str) else s[2]
-                win_rate = results.get('win_rate', 0)
-                profit_factor = results.get('profit_factor', 0)
-            except:
-                win_rate = 0
-                profit_factor = 0
-            
-            result.append({
-                'video_id': s[0],
-                'strategy_name': s[1],
-                'win_rate': win_rate,
-                'profit_factor': profit_factor,
-                'created_at': s[3].isoformat() if s[3] else None
-            })
-        
-        return jsonify({'strategies': result})
+        return jsonify({'strategies': [s.to_dict() for s in strategies]})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file:
+        filename = secure_filename(file.filename)
+        video_id = f'upload-{int(datetime.now().timestamp())}'
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Trigger pipeline
+        result = process_video_pipeline.delay(video_id, file_path, filename)
+
+        return jsonify({
+            'status': 'success',
+            'task_id': result.id,
+            'video_id': video_id,
+            'filename': filename,
+            'message': 'File uploaded and processing started.'
+        }), 200
 
 @app.route('/api/trigger-processing', methods=['POST'])
 def trigger_processing():
@@ -199,6 +147,8 @@ def health():
     })
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(
         host=Config.FLASK_HOST,
         port=Config.FLASK_PORT,

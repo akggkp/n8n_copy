@@ -152,3 +152,55 @@ async function triggerProcessing(event) {
         resultDiv.style.display = 'none';
     }, 10000);
 }
+
+// Upload video
+async function uploadVideo(event) {
+    event.preventDefault();
+    
+    const fileInput = document.getElementById('upload-file');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Please select a file to upload.');
+        return;
+    }
+    
+    const resultDiv = document.getElementById('upload-result');
+    resultDiv.style.display = 'block';
+    resultDiv.className = '';
+    resultDiv.textContent = 'Uploading video...';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultDiv.className = 'result-success';
+            resultDiv.textContent = `✓ Upload successful! Task ID: ${data.task_id}`;
+            
+            // Clear form
+            document.getElementById('upload-form').reset();
+            
+            // Refresh videos after 2 seconds
+            setTimeout(loadVideos, 2000);
+        } else {
+            resultDiv.className = 'result-error';
+            resultDiv.textContent = `✗ Error: ${data.error}`;
+        }
+    } catch (error) {
+        resultDiv.className = 'result-error';
+        resultDiv.textContent = `✗ Error: ${error.message}`;
+    }
+    
+    // Hide result after 10 seconds
+    setTimeout(() => {
+        resultDiv.style.display = 'none';
+    }, 10000);
+}
