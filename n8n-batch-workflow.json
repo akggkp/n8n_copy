@@ -1,0 +1,140 @@
+{
+  "name": "Trading Education AI - Scheduled Batch Processing",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule: Daily 2 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get pending videos from database query\nreturn {\n  query: 'SELECT video_id, file_path, filename FROM processed_videos WHERE status IS NULL LIMIT 10',\n  total_to_process: 10\n};"
+      },
+      "id": "fetch-pending-videos",
+      "name": "Fetch Pending Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-into-batches",
+      "name": "Split into Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/upload-video",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  video_id: $json.video_id,\n  file_path: $json.file_path,\n  filename: $json.filename\n}) }}",
+        "options": {}
+      },
+      "id": "trigger-main-workflow",
+      "name": "Trigger Main Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-between-videos",
+      "name": "Wait Between Videos",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Summary of batch processing\nconst totalVideos = $input.all().length;\nconst successCount = $input.all().filter(x => x.json.status === 'success').length;\n\nreturn {\n  total_videos: totalVideos,\n  successful: successCount,\n  failed: totalVideos - successCount,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "batch-summary",
+      "name": "Batch Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Schedule: Daily 2 AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Videos": {
+      "main": [
+        [
+          {
+            "node": "Split into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split into Batches": {
+      "main": [
+        [
+          {
+            "node": "Trigger Main Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Main Workflow": {
+      "main": [
+        [
+          {
+            "node": "Wait Between Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Between Videos": {
+      "main": [
+        [
+          {
+            "node": "Split into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": []
+}

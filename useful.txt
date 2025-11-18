@@ -1,0 +1,11 @@
+#for normalising github changes
+git add --renormalize .
+git commit -m "Fix line endings"
+
+# Delete all Python cache
+Remove-Item -Recurse -Force tasks\__pycache__
+Remove-Item -Recurse -Force __pycache__
+# Also delete .pyc files
+Get-ChildItem -Recurse -Filter "*.pyc" | Remove-Item -Force
+
+python -c "from tasks.chart_detection_cascade import CascadeChartDetector; print('✅ SUCCESS!')"
