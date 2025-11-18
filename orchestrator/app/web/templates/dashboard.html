@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading AI Orchestrator Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Trading AI Orchestrator</h1>
+            <p>Python-based Video Processing Pipeline</p>
+        </header>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="total-videos">-</div>
+                <div class="stat-label">Total Videos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="completed">-</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⌛</div>
+                <div class="stat-value" id="processing">-</div>
+                <div class="stat-label">Processing</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-value" id="profitable">-</div>
+                <div class="stat-label">Profitable Strategies</div>
+            </div>
+        </div>
+
+        <!-- Recent Videos Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2>🎬 Recent Videos</h2>
+                <button onclick="refreshVideos()" class="btn-refresh">Refresh</button>
+            </div>
+            <div class="table-container">
+                <table id="videos-table">
+                    <thead>
+                        <tr>
+                            <th>Video ID</th>
+                            <th>Filename</th>
+                            <th>Status</th>
+                            <th>Processing Time</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="videos-tbody">
+                        <tr>
+                            <td colspan="5" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Profitable Strategies Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2>🏆 Profitable Strategies</h2>
+                <button onclick="refreshStrategies()" class="btn-refresh">Refresh</button>
+            </div>
+            <div class="table-container">
+                <table id="strategies-table">
+                    <thead>
+                        <tr>
+                            <th>Video ID</th>
+                            <th>Strategy Name</th>
+                            <th>Win Rate</th>
+                            <th>Profit Factor</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="strategies-tbody">
+                        <tr>
+                            <td colspan="5" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Trigger Processing Section -->
+        <section class="section">
+            <h2>🚀 Trigger Processing</h2>
+            <form id="trigger-form" onsubmit="triggerProcessing(event)">
+                <div class="form-group">
+                    <label for="video-id">Video ID:</label>
+                    <input type="text" id="video-id" required placeholder="e.g., video_abc123">
+                </div>
+                <div class="form-group">
+                    <label for="filename">Filename:</label>
+                    <input type="text" id="filename" required placeholder="e.g., trading_video.mp4">
+                </div>
+                <div class="form-group">
+                    <label for="file-path">File Path:</label>
+                    <input type="text" id="file-path" required placeholder="/data/videos/trading_video.mp4">
+                </div>
+                <button type="submit" class="btn-primary">Process Video</button>
+            </form>
+            <div id="trigger-result"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

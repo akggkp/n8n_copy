@@ -1,0 +1,28 @@
+# Celery & Task Queue
+celery==5.3.4
+redis==5.0.1
+kombu==5.3.4
+vine==5.1.0
+
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+# HTTP Client
+requests==2.31.0
+
+# File Watching
+watchdog==3.0.0
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Logging
+coloredlogs==15.0.1
+
+# Scheduling
+apscheduler==3.10.4
