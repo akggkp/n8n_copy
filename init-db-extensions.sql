@@ -1,4 +1,4 @@
-﻿-- init-db-extensions.sql
+-- init-db-extensions.sql
 -- Database schema extensions for Trading Media Extraction Pipeline
 -- Add new tables for media items, transcripts, keywords, frames, clips, embeddings, and ML features
 

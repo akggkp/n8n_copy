@@ -31,3 +31,5 @@ requests==2.31.0
 
 # System & Monitoring
 psutil==6.0.0
+ffmpeg-python
+requests

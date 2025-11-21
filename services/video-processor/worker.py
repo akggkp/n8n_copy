@@ -24,6 +24,10 @@ from functools import partial
 # Import cascade detector
 from tasks.chart_detection_cascade import CascadeChartDetector
 
+# Import keyword detector and clip generator
+from keyword_detector import KeywordDetector, detect_keywords_from_whisper_result
+from clip_generator import ClipGenerator, generate_clips_from_keyword_hits
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -150,10 +154,15 @@ class VideoProcessorCascade:
         return frames
     
     def extract_audio_and_transcribe(self, video_file):
-        """Transcribe with optional cascade"""
+        """Transcribe with optional cascade, returning full result with segments"""
         try:
             logger.info(f"Transcribing with Whisper {WHISPER_MODEL}...")
-            result = self.whisper_model.transcribe(str(video_file), language="en")
+            # Get full result including segments for timestamped transcription
+            result = self.whisper_model.transcribe(
+                str(video_file), 
+                language="en",
+                word_timestamps=False  # Set to True for word-level timestamps if needed
+            )
             text = result.get("text", "")
             
             if WHISPER_CASCADE:
@@ -165,16 +174,20 @@ class VideoProcessorCascade:
                     if self.whisper_cascade_model is None:
                         self.whisper_cascade_model = whisper.load_model(WHISPER_CASCADE_MODEL)
                     
-                    result = self.whisper_cascade_model.transcribe(str(video_file), language="en")
+                    result = self.whisper_cascade_model.transcribe(
+                        str(video_file),
+                        language="en",
+                        word_timestamps=False
+                    )
                     text = result.get("text", "")
                     logger.info("Using cascade model result")
             
-            logger.info(f"Transcription completed: {len(text)} characters")
-            return text
+            logger.info(f"Transcription completed: {len(text)} characters, {len(result.get('segments', []))} segments")
+            return result  # Return full result with segments
         
         except Exception as e:
             logger.error(f"Transcription failed: {str(e)}")
-            return ""
+            return {"text": "", "segments": []}
     
     def _estimate_transcription_quality(self, text):
         """Estimate if transcription has technical terms"""
@@ -207,18 +220,43 @@ class VideoProcessorCascade:
             logger.error(f"Error deleting video: {str(e)}")
     
     def process_video(self, video_id, file_path):
-        """Main processing pipeline with cascade"""
+        """Main processing pipeline with cascade, keyword detection, and clip generation"""
         start_time = datetime.now()
         
         try:
             video_file = Path(file_path)
             logger.info(f"Processing video: {video_id}")
             
+            # Get video duration for clip generation
+            clip_gen = ClipGenerator()
+            video_duration = clip_gen.get_video_duration(str(video_file))
+            
             # Extract frames
             frames = self.extract_frames(video_file, fps=1)
             
-            # Transcribe audio
-            transcription = self.extract_audio_and_transcribe(video_file)
+            # Transcribe audio - now returns full result with segments
+            transcription_result = self.extract_audio_and_transcribe(video_file)
+            transcription_text = transcription_result.get("text", "")
+            transcription_segments = transcription_result.get("segments", [])
+            
+            # Detect keywords in transcription
+            logger.info("Detecting trading keywords...")
+            keyword_hits, keyword_stats = detect_keywords_from_whisper_result(
+                transcription_result,
+                video_duration
+            )
+            logger.info(f"Found {len(keyword_hits)} keyword hits: {keyword_stats.get('unique_keywords', 0)} unique keywords")
+            
+            # Generate clips for keyword hits
+            logger.info("Generating clips for keyword hits...")
+            clips_metadata = generate_clips_from_keyword_hits(
+                str(video_file),
+                video_id,
+                keyword_hits,
+                output_dir="/data/processed/clips",
+                video_duration=video_duration
+            )
+            logger.info(f"Generated {len(clips_metadata)} clips")
             
             # Detect charts using CASCADE
             detections, cascade_stats = self.detect_charts(frames)
@@ -230,13 +268,22 @@ class VideoProcessorCascade:
             with session_scope() as session:
                 processing_time = int((datetime.now() - start_time).total_seconds())
 
+                # Store extended processing results
+                extended_stats = cascade_stats.copy()
+                extended_stats['keyword_hits_count'] = len(keyword_hits)
+                extended_stats['clips_generated'] = len(clips_metadata)
+                extended_stats['unique_keywords'] = keyword_stats.get('unique_keywords', 0)
+                extended_stats['top_keywords'] = keyword_stats.get('top_keywords', [])[:5]
+                extended_stats['video_duration'] = video_duration
+                extended_stats['transcript_segments_count'] = len(transcription_segments)
+                
                 processed_video = ProcessedVideo(
                     video_id=video_id,
                     filename=video_file.name,
-                    transcription=transcription,
+                    transcription=transcription_text,
                     detected_charts=detections,
                     key_concepts=[],
-                    processing_stats=cascade_stats,
+                    processing_stats=extended_stats,
                     processing_time_seconds=processing_time
                 )
                 session.add(processed_video)            # Session automatically closes here
@@ -252,11 +299,24 @@ class VideoProcessorCascade:
             self.memory_manager.cleanup()
             
             logger.info(f"Video processing completed: {video_id}")
-            return True
+            
+            # Return structured results for orchestrator
+            return {
+                'success': True,
+                'video_id': video_id,
+                'transcription': transcription_text,
+                'transcription_segments': transcription_segments,
+                'keyword_hits': keyword_hits,
+                'keyword_stats': keyword_stats,
+                'clips_metadata': clips_metadata,
+                'detected_charts': detections,
+                'processing_stats': extended_stats,
+                'video_duration': video_duration
+            }
         
         except Exception as e:
             logger.error(f"Error processing video {video_id}: {str(e)}")
-            return False
+            return {'success': False, 'video_id': video_id, 'error': str(e)}
         
         finally:
             frames = []
@@ -272,12 +332,14 @@ def callback(ch, method, properties, body, processor):
         file_path = message['file_path']
         logger.info(f"Received task: {video_id}")
         
-        success = processor.process_video(video_id, file_path)
+        result = processor.process_video(video_id, file_path)
 
-        if success:
+        if result.get('success', False) if isinstance(result, dict) else result:
             ch.basic_ack(delivery_tag=method.delivery_tag)
+            logger.info(f"Task completed successfully: {video_id}")
         else:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            logger.error(f"Task failed: {video_id}")
 
         gc.collect()
         

@@ -1,0 +1,40 @@
+# Docker-compose snippet for API service
+# Add this to your existing docker-compose.yml file
+
+api-service:
+  build:
+    context: ./services/api-service
+    dockerfile: Dockerfile
+  container_name: trading-api-service
+  ports:
+    - "8003:8003"
+  environment:
+    - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+    - VIDEO_PROCESSOR_URL=http://video-processor:8000
+    - ML_SERVICE_URL=http://ml-service:8002
+    - BACKTEST_SERVICE_URL=http://backtesting-service:8001
+    - EMBEDDINGS_SERVICE_URL=http://embeddings-service:8004
+    - OLLAMA_URL=http://ollama:11434
+    - API_PORT=8003
+    - API_WORKERS=2
+  depends_on:
+    - postgres
+    - redis
+    - video-processor
+  volumes:
+    - ./services/api-service:/app
+    - ./data:/data
+  networks:
+    - trading-network
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 10s

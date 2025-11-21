@@ -30,3 +30,7 @@ apscheduler==3.10.4
 
 # Testing
 pytest==7.4.3
+sentence-transformers
+faiss-cpu
+requests
+numpy

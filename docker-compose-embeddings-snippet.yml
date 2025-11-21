@@ -1,0 +1,33 @@
+# Docker-compose snippet for embeddings service
+# Add this to your existing docker-compose.yml file
+
+embeddings-service:
+  build:
+    context: ./services/embeddings-service
+    dockerfile: Dockerfile
+  container_name: trading-embeddings-service
+  ports:
+    - "8004:8004"
+  environment:
+    - FAISS_INDEX_DIR=/data/processed/faiss
+    - EMBEDDING_MODEL=all-MiniLM-L6-v2
+    - EMBEDDING_DEVICE=cpu  # Use 'cuda' if GPU available
+    - EMBEDDINGS_PORT=8004
+    - EMBEDDINGS_WORKERS=1
+  volumes:
+    - ./services/embeddings-service:/app
+    - ./data/processed/faiss:/data/processed/faiss
+  networks:
+    - trading-network
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
