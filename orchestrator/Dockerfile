@@ -1,28 +1,28 @@
 FROM python:3.10-slim
 
-WORKDIR /app
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
-    curl \
+    ffmpeg \
+    libpq-dev \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+WORKDIR /app
 
-# Install Python dependencies
+# Copy requirements first for better caching
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Create directories
-RUN mkdir -p /app/logs /data/videos /data/processed
+# Copy and make entrypoint executable
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Expose port for web UI
-EXPOSE 8080
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Default command (can be overridden)
+CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info"]

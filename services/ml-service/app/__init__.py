@@ -1,1 +1,2 @@
-"""ML Training service application"""
+# ML Service
+__version__ = "1.0.0"

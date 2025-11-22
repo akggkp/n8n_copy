@@ -132,6 +132,8 @@ services:
       - postgres
       - redis
       - rabbitmq
+      - video-processor
+      - ml-service
     networks:
       - trading-network
     mem_limit: 512m
@@ -246,48 +248,43 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ==================== Video Processor ====================
+  # Video Processor Service
   video-processor:
     build:
       context: ./services/video-processor
       dockerfile: Dockerfile
     container_name: trading-video-processor
-    restart: unless-stopped
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - RABBITMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
-      - DELETE_VIDEO_AFTER_PROCESSING=${DELETE_VIDEO_AFTER_PROCESSING}
-      - MEMORY_CLEANUP_INTERVAL=${MEMORY_CLEANUP_INTERVAL}
-      - USE_CASCADE=${USE_CASCADE}
-      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD}
-      - WHISPER_MODEL=${WHISPER_MODEL}
-      - WHISPER_CASCADE=${WHISPER_CASCADE}
     volumes:
-      - ./data/videos:/data/videos
-      - ./data/processed:/data/processed
-      - ./data/models:/app/models
-      - ./data/logs:/app/logs
-    depends_on:
-      - postgres
-      - redis
-      - rabbitmq
+      - ./data:/data
+    ports:
+      - "8000:8000"
     networks:
       - trading-network
-    mem_limit: 2.5g
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f worker.py || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+
+  # ML Service
+  ml-service:
+    build:
+      context: ./services/ml-service
+      dockerfile: Dockerfile
+    container_name: trading-ml-service
+    ports:
+      - "8002:8002"
+    networks:
+      - trading-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   backtesting-service:
     build:
