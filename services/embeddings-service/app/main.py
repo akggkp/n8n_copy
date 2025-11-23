@@ -89,7 +89,6 @@ class StatsResponse(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Initialize embeddings client on startup"""
-    global embeddings_client
     try:
         faiss_dir = os.getenv("FAISS_INDEX_DIR", "/data/processed/faiss")
         model_name = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
@@ -110,7 +109,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Save indices on shutdown"""
-    global embeddings_client
     try:
         if embeddings_client:
             logger.info("Saving embeddings indices...")

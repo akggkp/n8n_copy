@@ -9,3 +9,10 @@ Remove-Item -Recurse -Force __pycache__
 Get-ChildItem -Recurse -Filter "*.pyc" | Remove-Item -Force
 
 python -c "from tasks.chart_detection_cascade import CascadeChartDetector; print('✅ SUCCESS!')"
+Step 5: Test locally before pushing
+bash
+# Run flake8 locally
+pip install flake8
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+# Should complete without errors
