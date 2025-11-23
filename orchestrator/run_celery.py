@@ -1,3 +1,5 @@
+from config import Config
+from app.celery_app import celery_app
 import os
 import sys
 from celery.schedules import crontab
@@ -5,8 +7,6 @@ from celery.schedules import crontab
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.celery_app import celery_app
-from config import Config
 
 celery_app.conf.update(
     broker_url=Config.CELERY_BROKER_URL,

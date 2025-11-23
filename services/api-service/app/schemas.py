@@ -52,7 +52,6 @@ class MediaItemBase(BaseModel):
 
 class MediaItemCreate(MediaItemBase):
     """Schema for creating media item"""
-    pass
 
 
 class MediaItemUpdate(BaseModel):
@@ -98,7 +97,6 @@ class TranscriptSegmentBase(BaseModel):
 
 class TranscriptSegmentCreate(TranscriptSegmentBase):
     """Schema for creating transcript segment"""
-    pass
 
 
 class TranscriptSegmentResponse(TranscriptSegmentBase):
@@ -170,7 +168,6 @@ class ClipBase(BaseModel):
 
 class ClipCreate(ClipBase):
     """Schema for creating clip"""
-    pass
 
 
 class ClipResponse(ClipBase):
@@ -215,7 +212,6 @@ class FrameBase(BaseModel):
 
 class FrameCreate(FrameBase):
     """Schema for creating frame"""
-    pass
 
 
 class FrameResponse(FrameBase):

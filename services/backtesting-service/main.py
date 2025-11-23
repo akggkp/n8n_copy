@@ -5,7 +5,7 @@ REST API for strategy backtesting and validation
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import logging
 import os
 from datetime import datetime
@@ -22,6 +22,8 @@ app = FastAPI(
 )
 
 # Models
+
+
 class BacktestRequest(BaseModel):
     video_id: str
     strategy: Dict[str, Any]
@@ -30,11 +32,13 @@ class BacktestRequest(BaseModel):
     start_date: str = "2024-01-01"
     end_date: str = "2024-12-31"
 
+
 class BacktestResponse(BaseModel):
     status: str
     video_id: str
     backtest_results: Dict[str, Any]
     message: str
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -42,6 +46,8 @@ class HealthResponse(BaseModel):
     timestamp: str
 
 # Routes
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
@@ -51,25 +57,26 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
+
 @app.post("/backtest", response_model=BacktestResponse)
 async def backtest_strategy(request: BacktestRequest):
     """
     Backtest a trading strategy
-    
+
     Args:
         request: BacktestRequest with strategy details
-        
+
     Returns:
         BacktestResponse with results
     """
     try:
         logger.info(f"Backtesting strategy for video: {request.video_id}")
-        
+
         # Import backtester engine
         from app.engine.backtester import BacktestEngine
-        
+
         engine = BacktestEngine()
-        
+
         # Run backtest
         is_profitable = engine.backtest_strategy(
             strategy_id=request.video_id,
@@ -79,31 +86,33 @@ async def backtest_strategy(request: BacktestRequest):
             start_date=request.start_date,
             end_date=request.end_date
         )
-        
+
         # Get results from database
         from sqlalchemy import create_engine, text
         from sqlalchemy.orm import sessionmaker
-        
+
         DATABASE_URL = os.getenv("DATABASE_URL")
         db_engine = create_engine(DATABASE_URL)
         Session = sessionmaker(bind=db_engine)
         session = Session()
-        
+
         # Query backtest results
         query = text("""
-            SELECT win_rate, profit_factor, sharpe_ratio, total_pnl, 
-                   total_trades, winning_trades, losing_trades 
-            FROM backtest_results 
-            WHERE strategy_id = :sid 
+            SELECT win_rate, profit_factor, sharpe_ratio, total_pnl,
+                   total_trades, winning_trades, losing_trades
+            FROM backtest_results
+            WHERE strategy_id = :sid
             ORDER BY tested_at DESC LIMIT 1
         """)
-        
+
         result = session.execute(query, {"sid": request.video_id}).fetchone()
         session.close()
-        
+
         if not result:
-            raise HTTPException(status_code=404, detail="Backtest results not found")
-        
+            raise HTTPException(
+                status_code=404,
+                detail="Backtest results not found")
+
         return BacktestResponse(
             status="success",
             video_id=request.video_id,
@@ -119,12 +128,13 @@ async def backtest_strategy(request: BacktestRequest):
             },
             message="Backtest completed successfully"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error backtesting: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/strategies/profitable")
 async def get_profitable_strategies():
@@ -132,32 +142,32 @@ async def get_profitable_strategies():
     try:
         from sqlalchemy import create_engine, text
         from sqlalchemy.orm import sessionmaker
-        
+
         DATABASE_URL = os.getenv("DATABASE_URL")
         db_engine = create_engine(DATABASE_URL)
         Session = sessionmaker(bind=db_engine)
         session = Session()
-        
+
         query = text("""
             SELECT strategy_id, win_rate, profit_factor, sharpe_ratio, total_pnl
             FROM backtest_results
-            WHERE win_rate > :min_wr 
+            WHERE win_rate > :min_wr
             AND profit_factor > :min_pf
             AND sharpe_ratio > :min_sr
             ORDER BY win_rate DESC
         """)
-        
+
         min_wr = float(os.getenv("MIN_WIN_RATE_TO_SAVE", 55))
         min_pf = float(os.getenv("MIN_PROFIT_FACTOR", 1.5))
         min_sr = float(os.getenv("MIN_SHARPE_RATIO", 0.5))
-        
+
         results = session.execute(
-            query, 
+            query,
             {"min_wr": min_wr, "min_pf": min_pf, "min_sr": min_sr}
         ).fetchall()
-        
+
         session.close()
-        
+
         return {
             "status": "success",
             "count": len(results),
@@ -172,7 +182,7 @@ async def get_profitable_strategies():
                 for r in results
             ]
         }
-        
+
     except Exception as e:
         logger.error(f"Error fetching strategies: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

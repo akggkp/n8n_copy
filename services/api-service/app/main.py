@@ -2,27 +2,23 @@
 # FastAPI application for Trading Media Extraction Pipeline data access layer
 
 from fastapi import FastAPI, HTTPException, Query, Depends
-from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
 
 # These models will be needed for the database-connected endpoints
 from app.database import get_db
-from app.models import MediaItem, Clip, Transcript, KeywordHit, Embedding
 from app.llama_client import LlamaClient
 
 # Initialize FastAPI app
 app = FastAPI(
     title="Trading Media Extraction API",
     description="API for accessing processed videos, clips, transcripts, and embeddings",
-    version="1.0.0"
-)
+    version="1.0.0")
 
 # Add CORS middleware
 app.add_middleware(
@@ -56,7 +52,8 @@ async def startup_event():
         if llama_client.health_check():
             logger.info("Llama client initialized and connected to Ollama.")
         else:
-            logger.warning("Llama client initialized, but could not connect to Ollama.")
+            logger.warning(
+                "Llama client initialized, but could not connect to Ollama.")
     except Exception as e:
         logger.error(f"Error initializing Llama client: {str(e)}")
 
@@ -94,12 +91,12 @@ async def list_media_items(
 ):
     """
     List all processed videos with pagination
-    
+
     Query Parameters:
     - skip: Number of items to skip (default: 0)
     - limit: Number of items to return (default: 20, max: 100)
     - status: Filter by status (pending, processing, completed, failed)
-    
+
     Returns:
     - List of media items with metadata and statistics
     """
@@ -107,27 +104,26 @@ async def list_media_items(
         # Implementation placeholder
         # from app.database import db
         # from app.models import MediaItem
-        
+
         # query = db.session.query(MediaItem)
         # if status:
         #     query = query.filter_by(status=status)
-        
+
         # total = query.count()
         # items = query.offset(skip).limit(limit).all()
-        
+
         # return {
         #     "total": total,
         #     "skip": skip,
         #     "limit": limit,
         #     "items": [item.to_dict() for item in items]
         # }
-        
+
         return {
             "message": "List media items endpoint - database integration needed",
             "skip": skip,
             "limit": limit,
-            "status_filter": status
-        }
+            "status_filter": status}
     except Exception as e:
         logger.error(f"Error listing media items: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -137,18 +133,18 @@ async def list_media_items(
 async def get_media_item(media_id: int):
     """
     Get details for a specific media item
-    
+
     Returns:
     - Media item metadata with associated clips, transcripts, keywords count
     """
     try:
         # from app.models import MediaItem
         # from app.database import db
-        
+
         # media_item = db.session.query(MediaItem).filter_by(id=media_id).first()
         # if not media_item:
         #     raise HTTPException(status_code=404, detail="Media item not found")
-        
+
         # return {
         #     "id": media_item.id,
         #     "video_id": media_item.video_id,
@@ -160,8 +156,9 @@ async def get_media_item(media_id: int):
         #     "keywords_count": len(media_item.keyword_hits),
         #     "transcript_segments": len(media_item.transcripts)
         # }
-        
-        return {"message": f"Get media item {media_id} - database integration needed"}
+
+        return {
+            "message": f"Get media item {media_id} - database integration needed"}
     except Exception as e:
         logger.error(f"Error getting media item: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -179,36 +176,36 @@ async def trigger_ingest(
 ):
     """
     Trigger video processing pipeline
-    
+
     Request Body:
     - video_path: Path to video file (local or S3)
     - source_url: Optional URL where video came from
     - filename: Optional custom filename
-    
+
     Returns:
     - task_id: Celery task ID for tracking progress
     - status: 'accepted' or 'queued'
     - estimated_duration_minutes: Estimated processing time
     """
     try:
-        import requests
-        from celery import current_app
-        
+        pass
+
         # Validate file exists
         if not os.path.exists(video_path):
-            raise HTTPException(status_code=400, detail=f"Video file not found: {video_path}")
-        
+            raise HTTPException(status_code=400,
+                                detail=f"Video file not found: {video_path}")
+
         # Get file info
         file_size = os.path.getsize(video_path)
         if not filename:
             filename = os.path.basename(video_path)
-        
+
         logger.info(f"Ingesting video: {filename} ({file_size} bytes)")
-        
+
         # Create media_item record in database
         # from app.models import MediaItem
         # from app.database import db
-        
+
         # media_item = MediaItem(
         #     filename=filename,
         #     source_url=source_url,
@@ -217,14 +214,14 @@ async def trigger_ingest(
         # )
         # db.session.add(media_item)
         # db.session.commit()
-        
+
         # Queue Celery task
         # from app.celery_app import celery_app
         # result = celery_app.send_task(
         #     'app.tasks.run_full_pipeline',
         #     args=[media_item.id, video_path, filename]
         # )
-        
+
         return {
             "status": "accepted",
             "task_id": "placeholder-task-id",
@@ -248,24 +245,24 @@ async def get_transcript(
 ):
     """
     Get full timestamped transcript for a media item
-    
+
     Path Parameters:
     - media_id: Media item ID
-    
+
     Query Parameters:
     - format: Response format (json or text)
-    
+
     Returns:
     - Full transcript with timestamps and segment indices
     """
     try:
         # from app.models import Transcript
         # from app.database import db
-        
+
         # transcripts = db.session.query(Transcript).filter_by(media_item_id=media_id).order_by(Transcript.segment_index).all()
         # if not transcripts:
         #     raise HTTPException(status_code=404, detail="No transcript found")
-        
+
         # if format == "json":
         #     return {
         #         "media_id": media_id,
@@ -282,8 +279,9 @@ async def get_transcript(
         # else:
         #     full_text = " ".join([t.text for t in transcripts])
         #     return {"text": full_text}
-        
-        return {"message": f"Get transcript for media {media_id} - database integration needed"}
+
+        return {
+            "message": f"Get transcript for media {media_id} - database integration needed"}
     except Exception as e:
         logger.error(f"Error getting transcript: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -302,29 +300,29 @@ async def search_clips(
 ):
     """
     Search for video clips by keyword
-    
+
     Query Parameters:
     - keyword: Filter by keyword name
     - media_id: Filter by media item ID
     - limit: Number of results (default: 10, max: 100)
     - skip: Number of results to skip (default: 0)
-    
+
     Returns:
     - List of clip metadata with download URLs
     """
     try:
         # from app.models import Clip
         # from app.database import db
-        
+
         # query = db.session.query(Clip)
         # if keyword:
         #     query = query.filter(Clip.keyword.ilike(f"%{keyword}%"))
         # if media_id:
         #     query = query.filter_by(media_item_id=media_id)
-        
+
         # total = query.count()
         # clips = query.offset(skip).limit(limit).all()
-        
+
         # return {
         #     "total": total,
         #     "skip": skip,
@@ -341,7 +339,7 @@ async def search_clips(
         #         for c in clips
         #     ]
         # }
-        
+
         return {
             "message": "Search clips endpoint - database integration needed",
             "keyword": keyword,
@@ -357,28 +355,30 @@ async def search_clips(
 async def download_clip(clip_id: int):
     """
     Download video clip by ID
-    
+
     Returns:
     - Binary video file stream (mp4)
     """
     try:
         # from app.models import Clip
         # from app.database import db
-        
+
         # clip = db.session.query(Clip).filter_by(id=clip_id).first()
         # if not clip:
         #     raise HTTPException(status_code=404, detail="Clip not found")
-        
+
         # if not os.path.exists(clip.file_path):
         #     raise HTTPException(status_code=404, detail="Clip file not found on disk")
-        
+
         # return FileResponse(
         #     path=clip.file_path,
         #     media_type="video/mp4",
         #     filename=f"clip_{clip_id}.mp4"
         # )
-        
-        raise HTTPException(status_code=404, detail="Clip not found - database integration needed")
+
+        raise HTTPException(
+            status_code=404,
+            detail="Clip not found - database integration needed")
     except Exception as e:
         logger.error(f"Error downloading clip: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -392,25 +392,25 @@ async def get_keywords(
 ):
     """
     Get detected keywords for a media item
-    
+
     Query Parameters:
     - media_id: Filter by media item ID
     - min_confidence: Minimum confidence threshold
     - limit: Maximum keywords to return
-    
+
     Returns:
     - List of keywords with timestamps and confidence scores
     """
     try:
         # from app.models import KeywordHit
         # from app.database import db
-        
+
         # query = db.session.query(KeywordHit).filter(KeywordHit.confidence >= min_confidence)
         # if media_id:
         #     query = query.filter_by(media_item_id=media_id)
-        
+
         # keywords = query.limit(limit).all()
-        
+
         # return {
         #     "keywords": [
         #         {
@@ -425,7 +425,7 @@ async def get_keywords(
         #         for k in keywords
         #     ]
         # }
-        
+
         return {
             "message": "Get keywords endpoint - database integration needed",
             "media_id": media_id,
@@ -442,38 +442,36 @@ async def get_keywords(
 
 @app.get("/embeddings/search", tags=["Embeddings"])
 async def search_embeddings(
-    query: str,
-    top_k: int = Query(10, ge=1, le=100),
-    embedding_type: str = Query("transcript", regex="^(transcript|frame|clip)$")
-):
+    query: str, top_k: int = Query(
+        10, ge=1, le=100), embedding_type: str = Query(
+            "transcript", regex="^(transcript|frame|clip)$")):
     """
     Semantic similarity search using embeddings
-    
+
     Query Parameters:
     - query: Search text or concept
     - top_k: Number of top results to return
     - embedding_type: Type of embeddings to search (transcript, frame, clip)
-    
+
     Returns:
     - List of most similar transcripts/frames/clips with similarity scores
     """
     try:
         # from app.embeddings_service import EmbeddingsClient
         # embeddings_client = EmbeddingsClient()
-        
+
         # query_embedding = embeddings_client.encode(query)
         # results = embeddings_client.search_faiss(
         #     query_embedding=query_embedding,
         #     embedding_type=embedding_type,
         #     top_k=top_k
         # )
-        
+
         return {
             "message": "Semantic search endpoint - embeddings service integration needed",
             "query": query,
             "top_k": top_k,
-            "embedding_type": embedding_type
-        }
+            "embedding_type": embedding_type}
     except Exception as e:
         logger.error(f"Error in embeddings search: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -493,44 +491,46 @@ async def get_llama_examples(
 ):
     """
     Get structured training examples for Llama fine-tuning or prompting
-    
+
     Query Parameters:
     - keyword: Filter by keyword (e.g., "RSI", "breakout")
     - top_k: Number of examples to return
     - include_embeddings: Whether to include embedding vectors
     - category: Filter by keyword category
-    
+
     Returns:
     - List of examples with transcripts, clips, concepts, and optional embeddings
     """
     try:
         from app.models import KeywordHit, Clip, Transcript, Embedding, MediaItem
-        from sqlalchemy import func, and_
-        
+        from sqlalchemy import and_
+
         # Base query: keyword_hits
         query = db.query(KeywordHit).filter(KeywordHit.confidence >= 0.7)
-        
+
         if keyword:
             query = query.filter(KeywordHit.keyword.ilike(f"%{keyword}%"))
         if category:
             query = query.filter(KeywordHit.category == category)
-        
+
         keyword_hits = query.limit(top_k).all()
-        
+
         examples = []
         for hit in keyword_hits:
             try:
                 # Get media item for source reference
-                media_item = db.query(MediaItem).filter_by(id=hit.media_item_id).first()
+                media_item = db.query(MediaItem).filter_by(
+                    id=hit.media_item_id).first()
                 if not media_item:
                     continue
-                
+
                 # Get associated clips
                 clips = db.query(Clip).filter_by(keyword_hit_id=hit.id).all()
-                
+
                 # Get transcript segments around keyword timestamp
-                transcripts = db.query(Transcript).filter_by(media_item_id=hit.media_item_id).all()
-                
+                transcripts = db.query(Transcript).filter_by(
+                    media_item_id=hit.media_item_id).all()
+
                 # Build context: segments within ±10 seconds of keyword
                 context_segments = [
                     t for t in transcripts
@@ -538,7 +538,7 @@ async def get_llama_examples(
                 ]
                 context_text = " ".join([t.text for t in context_segments])
                 full_transcript = " ".join([t.text for t in transcripts])
-                
+
                 # Get embeddings if requested
                 embeddings_vector = None
                 if include_embeddings:
@@ -551,15 +551,21 @@ async def get_llama_examples(
                     ).first()
                     if embedding:
                         embeddings_vector = embedding.embedding_vector
-                
+
                 # Get detected concepts (from ml_concepts table if available)
                 # For now, extract keywords from transcript
                 detected_concepts = []
                 if context_text:
                     # Simple extraction: look for common trading terms
-                    trading_terms = ["support", "resistance", "breakout", "momentum", "trend"]
-                    detected_concepts = [term for term in trading_terms if term.lower() in context_text.lower()]
-                
+                    trading_terms = [
+                        "support",
+                        "resistance",
+                        "breakout",
+                        "momentum",
+                        "trend"]
+                    detected_concepts = [
+                        term for term in trading_terms if term.lower() in context_text.lower()]
+
                 # Build example
                 example = {
                     "clip_id": f"{media_item.video_id}_{hit.keyword}_{hit.id}",
@@ -572,16 +578,17 @@ async def get_llama_examples(
                     "detected_concepts": detected_concepts,
                     "context_text": hit.context_text or context_text[:200]
                 }
-                
+
                 if include_embeddings and embeddings_vector:
                     example["embeddings"] = embeddings_vector
-                
+
                 examples.append(example)
-            
+
             except Exception as e:
-                logger.error(f"Error processing keyword hit {hit.id}: {str(e)}")
+                logger.error(
+                    f"Error processing keyword hit {hit.id}: {str(e)}")
                 continue
-        
+
         return {
             "examples": examples,
             "total": len(examples),
@@ -589,7 +596,7 @@ async def get_llama_examples(
             "category_filter": category,
             "timestamp": datetime.utcnow().isoformat()
         }
-    
+
     except Exception as e:
         logger.error(f"Error getting Llama examples: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -604,22 +611,26 @@ async def generate_llama_strategy(
 ):
     """
     Generate trading strategy using Llama based on video examples
-    
+
     Query Parameters:
     - keyword: Trading concept to generate strategy for
     - top_k: Number of examples to use (default: 5)
     - temperature: Generation creativity (0.0=deterministic, 1.0=creative)
-    
+
     Returns:
     - Generated strategy text
     """
     try:
         if not llama_client:
-            raise HTTPException(status_code=503, detail="Llama client not initialized")
-        
+            raise HTTPException(
+                status_code=503,
+                detail="Llama client not initialized")
+
         if not llama_client.health_check():
-            raise HTTPException(status_code=503, detail="Ollama service not available")
-        
+            raise HTTPException(
+                status_code=503,
+                detail="Ollama service not available")
+
         # Get examples
         examples_response = await get_llama_examples(
             keyword=keyword,
@@ -628,28 +639,32 @@ async def generate_llama_strategy(
             category=None,
             db=db
         )
-        
+
         examples = examples_response.get('examples', [])
         if not examples:
-            raise HTTPException(status_code=404, detail=f"No examples found for keyword: {keyword}")
-        
+            raise HTTPException(
+                status_code=404,
+                detail=f"No examples found for keyword: {keyword}")
+
         # Generate strategy
         strategy = llama_client.generate_strategy(
             examples=examples,
             keyword=keyword,
             temperature=temperature
         )
-        
+
         if not strategy:
-            raise HTTPException(status_code=500, detail="Strategy generation failed")
-        
+            raise HTTPException(
+                status_code=500,
+                detail="Strategy generation failed")
+
         return {
             "keyword": keyword,
             "strategy": strategy.strip(),
             "examples_used": len(examples),
             "timestamp": datetime.utcnow().isoformat()
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -665,23 +680,27 @@ async def summarize_keyword(
 ):
     """
     Get AI-generated summary of trading keyword from video examples
-    
+
     Path Parameters:
     - keyword: Trading concept to summarize
-    
+
     Query Parameters:
     - top_k: Number of examples to use for summarization
-    
+
     Returns:
     - Summary text of the trading concept
     """
     try:
         if not llama_client:
-            raise HTTPException(status_code=503, detail="Llama client not initialized")
+            raise HTTPException(
+                status_code=503,
+                detail="Llama client not initialized")
 
         if not llama_client.health_check():
-            raise HTTPException(status_code=503, detail="Ollama service not available")
-        
+            raise HTTPException(
+                status_code=503,
+                detail="Ollama service not available")
+
         # Get examples
         examples_response = await get_llama_examples(
             keyword=keyword,
@@ -690,33 +709,34 @@ async def summarize_keyword(
             category=None,
             db=db
         )
-        
+
         examples = examples_response.get('examples', [])
         if not examples:
-            raise HTTPException(status_code=404, detail=f"No examples found for keyword: {keyword}")
-        
+            raise HTTPException(
+                status_code=404,
+                detail=f"No examples found for keyword: {keyword}")
+
         # Summarize
         summary = llama_client.summarize_keyword(
             examples=examples,
             keyword=keyword
         )
-        
+
         if not summary:
             raise HTTPException(status_code=500, detail="Summarization failed")
-        
+
         return {
             "keyword": keyword,
             "summary": summary.strip(),
             "examples_used": len(examples),
             "timestamp": datetime.utcnow().isoformat()
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error summarizing keyword: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 # ============================================================================
@@ -754,9 +774,7 @@ async def root():
             "transcripts": "/transcript/{media_id}",
             "clips": "/clips",
             "embeddings": "/embeddings/search",
-            "llama": "/llama/examples"
-        }
-    }
+            "llama": "/llama/examples"}}
 
 
 if __name__ == "__main__":

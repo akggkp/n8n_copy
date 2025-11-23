@@ -4,7 +4,7 @@ ML Training Service - Strategy generation and concept extraction
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import logging
 import os
 from datetime import datetime
@@ -21,10 +21,13 @@ app = FastAPI(
 )
 
 # Models
+
+
 class ConceptExtractionRequest(BaseModel):
     video_id: str
     transcription: str
     detected_charts: List[Dict[str, Any]] = []
+
 
 class ConceptExtractionResponse(BaseModel):
     status: str
@@ -34,11 +37,13 @@ class ConceptExtractionResponse(BaseModel):
     patterns: List[str]
     message: str
 
+
 class StrategyGenerationRequest(BaseModel):
     video_id: str
     concepts: List[str]
     indicators: List[str]
     patterns: List[str]
+
 
 class StrategyGenerationResponse(BaseModel):
     status: str
@@ -47,6 +52,8 @@ class StrategyGenerationResponse(BaseModel):
     message: str
 
 # Routes
+
+
 @app.get("/health")
 async def health_check():
     """Health check"""
@@ -56,6 +63,7 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
+
 @app.post("/extract-concepts", response_model=ConceptExtractionResponse)
 async def extract_concepts(request: ConceptExtractionRequest):
     """
@@ -63,15 +71,16 @@ async def extract_concepts(request: ConceptExtractionRequest):
     """
     try:
         logger.info(f"Extracting concepts for video: {request.video_id}")
-        
+
         from app.concept_extractor.extractor import ConceptExtractor
-        
+
         extractor = ConceptExtractor()
-        
+
         concepts = extractor.extract_trading_concepts(request.transcription)
         indicators = extractor.extract_indicators(request.transcription)
-        patterns = extractor.extract_patterns(request.transcription, request.detected_charts)
-        
+        patterns = extractor.extract_patterns(
+            request.transcription, request.detected_charts)
+
         return ConceptExtractionResponse(
             status="success",
             video_id=request.video_id,
@@ -80,10 +89,11 @@ async def extract_concepts(request: ConceptExtractionRequest):
             patterns=patterns,
             message="Concepts extracted successfully"
         )
-    
+
     except Exception as e:
         logger.error(f"Error extracting concepts: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/generate-strategies", response_model=StrategyGenerationResponse)
 async def generate_strategies(request: StrategyGenerationRequest):
@@ -92,28 +102,29 @@ async def generate_strategies(request: StrategyGenerationRequest):
     """
     try:
         logger.info(f"Generating strategies for video: {request.video_id}")
-        
+
         from app.strategy_generator.model_trainer import StrategyGenerator
-        
+
         generator = StrategyGenerator()
-        
+
         strategies = generator.generate_strategies(
             video_id=request.video_id,
             concepts=request.concepts,
             indicators=request.indicators,
             patterns=request.patterns
         )
-        
+
         return StrategyGenerationResponse(
             status="success",
             video_id=request.video_id,
             strategies=strategies,
             message=f"Generated {len(strategies)} strategies"
         )
-    
+
     except Exception as e:
         logger.error(f"Error generating strategies: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/strategies/trending")
 async def get_trending_strategies(limit: int = 10):
@@ -121,14 +132,14 @@ async def get_trending_strategies(limit: int = 10):
     try:
         from sqlalchemy import create_engine, text
         from sqlalchemy.orm import sessionmaker
-        
+
         DATABASE_URL = os.getenv("DATABASE_URL")
         engine = create_engine(DATABASE_URL)
         Session = sessionmaker(bind=engine)
         session = Session()
-        
+
         query = text("""
-            SELECT 
+            SELECT
                 s.strategy_id,
                 s.strategy_name,
                 b.win_rate,
@@ -141,10 +152,10 @@ async def get_trending_strategies(limit: int = 10):
             ORDER BY b.win_rate DESC, frequency DESC
             LIMIT :limit
         """)
-        
+
         results = session.execute(query, {"limit": limit}).fetchall()
         session.close()
-        
+
         return {
             "status": "success",
             "count": len(results),
@@ -159,7 +170,7 @@ async def get_trending_strategies(limit: int = 10):
                 for r in results
             ]
         }
-    
+
     except Exception as e:
         logger.error(f"Error fetching trending strategies: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,7 +4,9 @@ from sqlalchemy.orm import sessionmaker, Session
 import os
 from typing import Generator
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://tradingai:password@localhost:5432/trading_education")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://tradingai:password@localhost:5432/trading_education")
 
 engine = create_engine(
     DATABASE_URL,
@@ -15,6 +17,7 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def get_db() -> Generator[Session, None, None]:
     """Dependency for FastAPI to get database session"""
     db = SessionLocal()
@@ -22,6 +25,7 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
 
 def init_db():
     """Initialize database tables"""

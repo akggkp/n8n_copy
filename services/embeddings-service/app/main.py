@@ -2,7 +2,6 @@
 # FastAPI service for generating and searching embeddings
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import logging
@@ -14,8 +13,7 @@ from app.embeddings_client import EmbeddingsClient
 app = FastAPI(
     title="Embeddings Service",
     description="Service for generating and searching text/image embeddings using sentence-transformers and Faiss",
-    version="1.0.0"
-)
+    version="1.0.0")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -93,7 +91,7 @@ async def startup_event():
         faiss_dir = os.getenv("FAISS_INDEX_DIR", "/data/processed/faiss")
         model_name = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
         device = os.getenv("EMBEDDING_DEVICE", "cpu")
-        
+
         logger.info(f"Initializing embeddings client with model: {model_name}")
         embeddings_client = EmbeddingsClient(
             model_name=model_name,
@@ -127,8 +125,9 @@ async def health_check():
     """Health check endpoint"""
     try:
         if embeddings_client is None:
-            return {"status": "initializing", "timestamp": datetime.utcnow().isoformat()}
-        
+            return {"status": "initializing",
+                    "timestamp": datetime.utcnow().isoformat()}
+
         stats = embeddings_client.get_stats()
         return {
             "status": "healthy",
@@ -145,10 +144,12 @@ async def health_check():
 # ============================================================================
 
 @app.post("/embed", response_model=EmbedResponse)
-async def generate_embeddings(request: EmbedRequest, background_tasks: BackgroundTasks):
+async def generate_embeddings(
+        request: EmbedRequest,
+        background_tasks: BackgroundTasks):
     """
     Generate embeddings for transcripts, frames, or clips
-    
+
     Request:
     ```json
     {
@@ -163,10 +164,11 @@ async def generate_embeddings(request: EmbedRequest, background_tasks: Backgroun
     """
     try:
         if embeddings_client is None:
-            raise HTTPException(status_code=503, detail="Embeddings client not initialized")
-        
+            raise HTTPException(status_code=503,
+                                detail="Embeddings client not initialized")
+
         embeddings_count = 0
-        
+
         if request.embedding_type == "transcript" and request.segments:
             embeddings_count = embeddings_client.add_transcript_embeddings(
                 request.media_item_id,
@@ -183,11 +185,13 @@ async def generate_embeddings(request: EmbedRequest, background_tasks: Backgroun
                 request.clips
             )
         else:
-            raise HTTPException(status_code=400, detail="Invalid embedding_type or missing data")
-        
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid embedding_type or missing data")
+
         # Save indices in background
         background_tasks.add_task(embeddings_client.save_indices)
-        
+
         return EmbedResponse(
             status="success",
             media_item_id=request.media_item_id,
@@ -195,7 +199,7 @@ async def generate_embeddings(request: EmbedRequest, background_tasks: Backgroun
             embeddings_created=embeddings_count,
             timestamp=datetime.utcnow()
         )
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -211,7 +215,7 @@ async def generate_embeddings(request: EmbedRequest, background_tasks: Backgroun
 async def search_embeddings(request: SearchRequest):
     """
     Perform semantic similarity search
-    
+
     Request:
     ```json
     {
@@ -224,10 +228,11 @@ async def search_embeddings(request: SearchRequest):
     """
     try:
         if embeddings_client is None:
-            raise HTTPException(status_code=503, detail="Embeddings client not initialized")
-        
+            raise HTTPException(status_code=503,
+                                detail="Embeddings client not initialized")
+
         results = []
-        
+
         if request.embedding_type == "transcript":
             results = embeddings_client.search_transcripts(
                 query=request.query,
@@ -247,26 +252,30 @@ async def search_embeddings(request: SearchRequest):
                 min_similarity=request.min_similarity
             )
         else:
-            raise HTTPException(status_code=400, detail="Invalid embedding_type")
-        
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid embedding_type")
+
         # Format results
         formatted_results = [
             SearchResult(
                 index=r['index'],
                 similarity=r['similarity'],
                 distance=r['distance'],
-                metadata={k: v for k, v in r.items() if k not in ['index', 'similarity', 'distance']}
-            )
-            for r in results
-        ]
-        
+                metadata={
+                    k: v for k,
+                    v in r.items() if k not in [
+                        'index',
+                        'similarity',
+                        'distance']}) for r in results]
+
         return SearchResponse(
             query=request.query,
             embedding_type=request.embedding_type,
             results=formatted_results,
             timestamp=datetime.utcnow()
         )
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -283,24 +292,27 @@ async def search_transcripts_simple(
     """Simple GET endpoint for transcript search"""
     try:
         if embeddings_client is None:
-            raise HTTPException(status_code=503, detail="Embeddings client not initialized")
-        
+            raise HTTPException(status_code=503,
+                                detail="Embeddings client not initialized")
+
         results = embeddings_client.search_transcripts(
             query=query,
             top_k=top_k,
             min_similarity=min_similarity
         )
-        
+
         formatted_results = [
             SearchResult(
                 index=r['index'],
                 similarity=r['similarity'],
                 distance=r['distance'],
-                metadata={k: v for k, v in r.items() if k not in ['index', 'similarity', 'distance']}
-            )
-            for r in results
-        ]
-        
+                metadata={
+                    k: v for k,
+                    v in r.items() if k not in [
+                        'index',
+                        'similarity',
+                        'distance']}) for r in results]
+
         return SearchResponse(
             query=query,
             embedding_type="transcript",
@@ -323,24 +335,27 @@ async def search_frames_simple(
     """Simple GET endpoint for frame search"""
     try:
         if embeddings_client is None:
-            raise HTTPException(status_code=503, detail="Embeddings client not initialized")
-        
+            raise HTTPException(status_code=503,
+                                detail="Embeddings client not initialized")
+
         results = embeddings_client.search_frames(
             query=query,
             top_k=top_k,
             min_similarity=min_similarity
         )
-        
+
         formatted_results = [
             SearchResult(
                 index=r['index'],
                 similarity=r['similarity'],
                 distance=r['distance'],
-                metadata={k: v for k, v in r.items() if k not in ['index', 'similarity', 'distance']}
-            )
-            for r in results
-        ]
-        
+                metadata={
+                    k: v for k,
+                    v in r.items() if k not in [
+                        'index',
+                        'similarity',
+                        'distance']}) for r in results]
+
         return SearchResponse(
             query=query,
             embedding_type="frame",
@@ -363,24 +378,27 @@ async def search_clips_simple(
     """Simple GET endpoint for clip search"""
     try:
         if embeddings_client is None:
-            raise HTTPException(status_code=503, detail="Embeddings client not initialized")
-        
+            raise HTTPException(status_code=503,
+                                detail="Embeddings client not initialized")
+
         results = embeddings_client.search_clips(
             query=query,
             top_k=top_k,
             min_similarity=min_similarity
         )
-        
+
         formatted_results = [
             SearchResult(
                 index=r['index'],
                 similarity=r['similarity'],
                 distance=r['distance'],
-                metadata={k: v for k, v in r.items() if k not in ['index', 'similarity', 'distance']}
-            )
-            for r in results
-        ]
-        
+                metadata={
+                    k: v for k,
+                    v in r.items() if k not in [
+                        'index',
+                        'similarity',
+                        'distance']}) for r in results]
+
         return SearchResponse(
             query=query,
             embedding_type="clip",
@@ -403,13 +421,14 @@ async def get_stats():
     """Get embeddings service statistics"""
     try:
         if embeddings_client is None:
-            raise HTTPException(status_code=503, detail="Embeddings client not initialized")
-        
+            raise HTTPException(status_code=503,
+                                detail="Embeddings client not initialized")
+
         stats = embeddings_client.get_stats()
         stats['timestamp'] = datetime.utcnow()
-        
+
         return StatsResponse(**stats)
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -437,9 +456,7 @@ async def root():
             "search_transcripts": "/search/transcripts (GET)",
             "search_frames": "/search/frames (GET)",
             "search_clips": "/search/clips (GET)",
-            "stats": "/stats"
-        }
-    }
+            "stats": "/stats"}}
 
 
 if __name__ == "__main__":

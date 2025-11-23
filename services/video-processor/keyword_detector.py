@@ -2,7 +2,7 @@
 # Module for detecting trading keywords in transcripts with context windows
 
 import re
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
@@ -32,7 +32,7 @@ class KeywordHit:
 
 class KeywordDetector:
     """Detects trading keywords in transcripts with timestamps"""
-    
+
     # Comprehensive trading keywords dictionary organized by category
     TRADING_KEYWORDS = {
         KeywordCategory.TECHNICAL_INDICATOR: [
@@ -113,11 +113,14 @@ class KeywordDetector:
             "1M", "5M", "15M", "30M", "1H", "4H", "1D", "1W", "1M"
         ]
     }
-    
-    def __init__(self, case_sensitive: bool = False, min_confidence: float = 0.8):
+
+    def __init__(
+            self,
+            case_sensitive: bool = False,
+            min_confidence: float = 0.8):
         """
         Initialize KeywordDetector
-        
+
         Args:
             case_sensitive: Whether to perform case-sensitive matching
             min_confidence: Minimum confidence threshold for keyword hits
@@ -125,12 +128,12 @@ class KeywordDetector:
         self.case_sensitive = case_sensitive
         self.min_confidence = min_confidence
         self._compile_regex_patterns()
-    
+
     def _compile_regex_patterns(self) -> None:
         """Compile regex patterns for efficient keyword matching"""
         self.keyword_patterns = {}
         flags = 0 if self.case_sensitive else re.IGNORECASE
-        
+
         for category, keywords in self.TRADING_KEYWORDS.items():
             patterns = []
             for keyword in keywords:
@@ -139,8 +142,9 @@ class KeywordDetector:
                 patterns.append(pattern)
             # Combine all patterns for this category with OR
             combined_pattern = '|'.join(patterns)
-            self.keyword_patterns[category] = re.compile(combined_pattern, flags)
-    
+            self.keyword_patterns[category] = re.compile(
+                combined_pattern, flags)
+
     def detect_keywords_in_transcript(
         self,
         transcript_segments: List[Dict],
@@ -148,33 +152,32 @@ class KeywordDetector:
     ) -> List[KeywordHit]:
         """
         Detect trading keywords in transcript segments
-        
+
         Args:
             transcript_segments: List of dicts with 'text', 'start', 'end', 'segment_index'
             context_window: Number of characters to include as context before/after match
-        
+
         Returns:
             List of KeywordHit objects with detection results
         """
         hits = []
         full_text = " ".join([seg['text'] for seg in transcript_segments])
-        
+
         for category, pattern in self.keyword_patterns.items():
             for match in pattern.finditer(full_text):
                 keyword = match.group()
                 start_pos = match.start()
                 end_pos = match.end()
-                
+
                 # Extract context
                 context_start = max(0, start_pos - context_window)
                 context_end = min(len(full_text), end_pos + context_window)
                 context_text = full_text[context_start:context_end]
-                
+
                 # Find corresponding segment timestamps
                 segment_index, start_time, end_time = self._get_timestamp_for_position(
-                    full_text, start_pos, end_pos, transcript_segments
-                )
-                
+                    full_text, start_pos, end_pos, transcript_segments)
+
                 hit = KeywordHit(
                     keyword=keyword,
                     category=category,
@@ -185,9 +188,9 @@ class KeywordDetector:
                     segment_index=segment_index
                 )
                 hits.append(hit)
-        
+
         return hits
-    
+
     def _get_timestamp_for_position(
         self,
         full_text: str,
@@ -197,38 +200,38 @@ class KeywordDetector:
     ) -> Tuple[int, float, float]:
         """
         Map character position in full text to segment timestamps
-        
+
         Args:
             full_text: Concatenated transcript text
             start_pos: Character position of keyword start
             end_pos: Character position of keyword end
             transcript_segments: Original segment data
-        
+
         Returns:
             Tuple of (segment_index, start_time, end_time)
         """
         char_count = 0
-        
+
         for seg_idx, segment in enumerate(transcript_segments):
             segment_text = segment['text']
             segment_length = len(segment_text) + 1  # +1 for space separator
-            
+
             if char_count <= start_pos < char_count + segment_length:
                 return (
                     seg_idx,
                     segment['start'],
                     segment['end']
                 )
-            
+
             char_count += segment_length
-        
+
         # Fallback to last segment
         return (
             len(transcript_segments) - 1,
             transcript_segments[-1]['start'],
             transcript_segments[-1]['end']
         )
-    
+
     def filter_hits_by_confidence(
         self,
         hits: List[KeywordHit],
@@ -236,7 +239,7 @@ class KeywordDetector:
     ) -> List[KeywordHit]:
         """Filter keyword hits by confidence threshold"""
         return [hit for hit in hits if hit.confidence >= threshold]
-    
+
     def get_hits_by_category(
         self,
         hits: List[KeywordHit],
@@ -244,22 +247,23 @@ class KeywordDetector:
     ) -> List[KeywordHit]:
         """Get keyword hits filtered by category"""
         return [hit for hit in hits if hit.category == category]
-    
+
     def get_unique_keywords(self, hits: List[KeywordHit]) -> Dict[str, int]:
         """Get count of unique keywords detected"""
         keyword_counts = {}
         for hit in hits:
-            keyword_counts[hit.keyword] = keyword_counts.get(hit.keyword, 0) + 1
+            keyword_counts[hit.keyword] = keyword_counts.get(
+                hit.keyword, 0) + 1
         return keyword_counts
 
 
 def format_hits_for_database(hits: List[KeywordHit]) -> List[Dict]:
     """
     Format KeywordHit objects for database insertion
-    
+
     Args:
         hits: List of KeywordHit objects
-    
+
     Returns:
         List of dicts ready for database insertion
     """

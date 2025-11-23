@@ -7,14 +7,22 @@ from app.main import app
 from app.database import get_db
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models import Base, MediaItem, KeywordHit, Transcript # Import necessary models
+# Import necessary models
+from app.models import Base, MediaItem, KeywordHit, Transcript
 
 # Test database
 TEST_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(
+    TEST_DATABASE_URL, connect_args={
+        "check_same_thread": False})
+TestingSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine)
 
 # Override database dependency
+
+
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -22,17 +30,20 @@ def override_get_db():
     finally:
         db.close()
 
+
 app.dependency_overrides[get_db] = override_get_db
 
 # Create test client
 client = TestClient(app)
 
 # Setup/Teardown
+
+
 @pytest.fixture(autouse=True)
 def setup_database():
     """Create tables before each test"""
     Base.metadata.create_all(bind=engine)
-    
+
     # Add some dummy data for tests
     db = TestingSessionLocal()
     try:
@@ -76,12 +87,12 @@ def setup_database():
 
 class TestHealthEndpoint:
     """Test health check endpoint"""
-    
+
     def test_health_check(self):
         """Health endpoint should return 200 with status"""
         response = client.get("/health")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "healthy"
         assert "timestamp" in data
@@ -90,7 +101,7 @@ class TestHealthEndpoint:
 
 class TestMediaItemsEndpoint:
     """Test media items endpoints"""
-    
+
     def test_list_media_items_empty(self):
         """Should return empty list when no media items"""
         # Drop all tables first to ensure it's empty
@@ -99,11 +110,11 @@ class TestMediaItemsEndpoint:
 
         response = client.get("/media_items")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "items" in data
         assert len(data["items"]) == 0
-    
+
     def test_get_media_item_not_found(self):
         """Should return 404 for non-existent media item"""
         response = client.get("/media_items/999")
@@ -112,7 +123,7 @@ class TestMediaItemsEndpoint:
 
 class TestIngestEndpoint:
     """Test video ingest endpoint"""
-    
+
     def test_ingest_invalid_path(self):
         """Should reject invalid video path"""
         response = client.post(
@@ -124,7 +135,7 @@ class TestIngestEndpoint:
         )
         # May return 400 or 500 depending on validation
         assert response.status_code in [400, 500]
-    
+
     def test_ingest_missing_filename(self):
         """Should reject missing filename"""
         response = client.post(
@@ -138,7 +149,7 @@ class TestIngestEndpoint:
 
 class TestKeywordsEndpoint:
     """Test keywords endpoint"""
-    
+
     def test_keywords_empty(self):
         """Should return empty list when no keywords"""
         # Drop all tables first to ensure it's empty
@@ -147,7 +158,7 @@ class TestKeywordsEndpoint:
 
         response = client.get("/keywords")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "keywords" in data
         assert len(data["keywords"]) == 0
@@ -155,29 +166,29 @@ class TestKeywordsEndpoint:
 
 class TestClipsEndpoint:
     """Test clips endpoint"""
-    
+
     def test_clips_filter_by_keyword(self):
         """Should accept keyword filter parameter"""
         response = client.get("/clips?keyword=RSI")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "clips" in data
 
 
 class TestLlamaEndpoints:
     """Test Llama dataset API endpoints"""
-    
+
     def test_llama_examples_no_keyword(self):
         """Should return examples without keyword filter"""
         response = client.get("/llama/examples")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "examples" in data
         assert "total" in data
-        assert len(data["examples"]) > 0 # Should have the dummy data
-    
+        assert len(data["examples"]) > 0  # Should have the dummy data
+
     def test_llama_examples_with_keyword(self):
         """Should filter by keyword"""
         response = client.get("/llama/examples?keyword=RSI&top_k=5")
