@@ -31,7 +31,7 @@ class MemoryCleaner:
         self.memory_threshold = int(os.getenv("MEMORY_THRESHOLD_MB", "1500"))
         self.last_cleanup = datetime.now()
 
-        logger.info(f"Memory Cleaner initialized")
+        logger.info("Memory Cleaner initialized")
         logger.info(f"Cleanup interval: {self.cleanup_interval} seconds")
         logger.info(f"Memory threshold: {self.memory_threshold} MB")
 

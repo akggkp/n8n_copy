@@ -128,7 +128,7 @@ def test_full_pipeline():
     metrics = backtest_response.get('metrics', {})
 
     print(f"   Backtest ID: {backtest_id}")
-    print(f"\n   Performance Metrics:")
+    print("\n   Performance Metrics:")
     print(f"   - Sharpe Ratio: {metrics.get('sharpe_ratio')}")
     print(f"   - Win Rate: {metrics.get('win_rate', 0) * 100:.2f}%")
     print(f"   - Max Drawdown: {metrics.get('max_drawdown', 0) * 100:.2f}%")
@@ -154,12 +154,12 @@ def test_full_pipeline():
     )
 
     if passed:
-        print(f"   ✓ Strategy PASSED validation thresholds")
+        print("   ✓ Strategy PASSED validation thresholds")
         print(f"     - Sharpe >= {min_sharpe}: {sharpe >= min_sharpe}")
         print(f"     - Win Rate >= {min_win_rate}: {win_rate >= min_win_rate}")
         print(f"     - Drawdown <= {max_drawdown}: {max_dd <= max_drawdown}")
     else:
-        print(f"   ✗ Strategy FAILED validation")
+        print("   ✗ Strategy FAILED validation")
 
     # Step 9: Get equity curve
     print("\n9. Retrieving equity curve...")

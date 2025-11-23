@@ -39,7 +39,7 @@ def test_task_definitions():
         pass
 
         print("✅ All 11 tasks defined")
-        print(f"   Tasks: validate_video, process_video, detect_keywords, ...")
+        print("   Tasks: validate_video, process_video, detect_keywords, ...")
         return True
     except Exception as e:
         print(f"❌ Task definitions test failed: {e}")
@@ -72,7 +72,7 @@ def test_task_implementations():
             print(
                 f"   Note: {pass_count} 'pass' statements (some tasks incomplete)")
         else:
-            print(f"   All tasks have complete implementations")
+            print("   All tasks have complete implementations")
 
         return True
     except Exception as e:

@@ -141,12 +141,11 @@ class BacktestEngine:
         # Simulate trades
         trades = []
         entry_price = None
-        entry_date = None
 
         for idx, row in data.iterrows():
             if row['signal'] == 1 and entry_price is None:
                 entry_price = row['close']
-                entry_date = row['datetime']
+                row['datetime']
             elif row['signal'] == -1 and entry_price is not None:
                 exit_price = row['close']
                 pnl = exit_price - entry_price
@@ -157,7 +156,6 @@ class BacktestEngine:
                     'profitable': pnl > 0
                 })
                 entry_price = None
-                entry_date = None
 
         # Calculate metrics
         if not trades:
@@ -177,7 +175,7 @@ class BacktestEngine:
 
         trades_df = pd.DataFrame(trades)
         winning_trades = trades_df[trades_df['profitable']]
-        losing_trades = trades_df[trades_df['profitable'] == False]
+        losing_trades = trades_df[trades_df['profitable'] is False]
 
         total_trades = len(trades)
         win_count = len(winning_trades)

@@ -92,7 +92,7 @@ def test_concept_extraction():
                     })
 
         if detected_keywords:
-            print(f"✅ Concept extraction working")
+            print("✅ Concept extraction working")
             print(f"   Detected {len(detected_keywords)} keywords:")
             for kw in detected_keywords[:5]:  # Show first 5
                 print(
@@ -114,7 +114,7 @@ def test_service_endpoints():
         pass
 
         print("✅ Service module imported successfully")
-        print(f"   Endpoints: /, /health, /extract_concepts, /categories")
+        print("   Endpoints: /, /health, /extract_concepts, /categories")
         return True
     except Exception as e:
         print(f"❌ Service import failed: {e}")

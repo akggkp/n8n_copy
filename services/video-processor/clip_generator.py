@@ -111,7 +111,7 @@ class ClipGenerator:
                 "-ss", str(clip_start),
                 "-to", str(clip_end),
                 "-c:v", self.video_codec,
-                "-crf", str(self.crf),
+                "-cr", str(self.crf),
                 "-preset", self.preset,
             ]
 
@@ -305,7 +305,7 @@ class ClipGenerator:
                 "-v", "error",
                 "-select_streams", "v:0",
                 "-show_entries", "stream=width,height,duration",
-                "-of", "default=noprint_wrappers=1:nokey=1:ch=,",
+                "-o", "default=noprint_wrappers=1:nokey=1:ch=,",
                 str(video_path)
             ]
 

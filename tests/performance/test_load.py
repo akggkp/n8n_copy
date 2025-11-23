@@ -82,7 +82,7 @@ class LoadTester:
         print(f"  Success Rate: {metrics['success_rate']:.2f}%")
         print(f"  Total Time: {metrics['total_time']:.2f}s")
         print(f"  Requests/sec: {metrics['requests_per_second']:.2f}")
-        print(f"\nResponse Times:")
+        print("\nResponse Times:")
         print(f"  Average: {metrics['avg_duration']*1000:.2f}ms")
         print(f"  Median: {metrics['median_duration']*1000:.2f}ms")
         print(f"  Std Dev: {metrics['stdev_duration']*1000:.2f}ms")

@@ -1,9 +1,5 @@
 ﻿[flake8]
-exclude = 
-    .venv,
-    __pycache__,
-    .git,
-    .pytest_cache,
-    *.egg-info
-
+exclude = .venv,__pycache__,.git,.pytest_cache
 max-line-length = 127
+max-complexity = 15
+ignore = C901

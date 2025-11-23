@@ -602,7 +602,7 @@ def evaluate_and_promote(self, previous_result):
     try:
         media_item_id = previous_result.get('media_item_id')
         metrics = previous_result.get('backtest_metrics', {})
-        strategy = previous_result.get('strategy', {})
+        previous_result.get('strategy', {})
 
         logger.info(f"Evaluating strategy for media_item {media_item_id}")
 

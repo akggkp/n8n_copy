@@ -163,7 +163,7 @@ async def get_profitable_strategies():
 
         results = session.execute(
             query,
-            {"min_wr": min_wr, "min_pf": min_pf, "min_sr": min_sr}
+            {"min_wr": min_wr, "min_p": min_pf, "min_sr": min_sr}
         ).fetchall()
 
         session.close()

@@ -29,7 +29,7 @@ def test_models_import():
 
         print("✅ All models imported successfully")
         print(
-            f"   Models: MediaItem, Transcript, KeywordHit, Clip, Embedding, ProvenStrategy")
+            "   Models: MediaItem, Transcript, KeywordHit, Clip, Embedding, ProvenStrategy")
         return True
     except Exception as e:
         print(f"❌ Models import failed: {e}")
@@ -61,7 +61,7 @@ def test_model_attributes():
             return False
 
         print("✅ Model attributes correct")
-        print(f"   MediaItem has all required fields and relationships")
+        print("   MediaItem has all required fields and relationships")
         return True
     except Exception as e:
         print(f"❌ Model attributes test failed: {e}")
@@ -77,7 +77,7 @@ def test_database_connection():
 
         # Try to connect
         with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
+            connection.execute(text("SELECT 1"))
             print("✅ Database connection successful")
             return True
     except Exception as e:

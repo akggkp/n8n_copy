@@ -29,7 +29,7 @@ class Benchmark:
         min_time = np.min(self.times)
         max_time = np.max(self.times)
 
-        print(f"Results:")
+        print("Results:")
         print(f"  Average: {avg*1000:.2f}ms")
         print(f"  Std Dev: {std*1000:.2f}ms")
         print(f"  Min: {min_time*1000:.2f}ms")

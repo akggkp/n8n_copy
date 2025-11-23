@@ -86,7 +86,7 @@ class TestDatabaseIntegration:
         """Media items should persist in database"""
         # Get initial count
         response1 = requests.get(f"{BASE_URL_API}/media_items", timeout=5)
-        initial_count = len(response1.json().get("items", []))
+        len(response1.json().get("items", []))
 
         # Note: Actual creation would require valid video file
         # This test verifies the endpoint structure

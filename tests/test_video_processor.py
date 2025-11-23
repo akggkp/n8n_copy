@@ -28,7 +28,7 @@ def test_whisper_model():
     print("\n🧪 Test 1.2: Loading Whisper model...")
     try:
         import whisper
-        model = whisper.load_model("base")
+        whisper.load_model("base")
         print("✅ Whisper model loaded successfully")
         return True
     except Exception as e:
@@ -72,7 +72,7 @@ def test_opencv():
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             duration = frame_count / fps if fps > 0 else 0
 
-            print(f"✅ OpenCV can read video")
+            print("✅ OpenCV can read video")
             print(f"   Duration: {duration:.2f} seconds")
             print(f"   FPS: {fps:.2f}")
             print(f"   Total frames: {frame_count}")
@@ -94,7 +94,7 @@ def test_service_endpoints():
         pass
 
         print("✅ Service module imported successfully")
-        print(f"   Endpoints: /, /health, /process")
+        print("   Endpoints: /, /health, /process")
         return True
     except Exception as e:
         print(f"❌ Service import failed: {e}")

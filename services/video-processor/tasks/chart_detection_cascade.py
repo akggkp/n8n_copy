@@ -83,7 +83,7 @@ class CascadeChartDetector:
             if (i + batch_size) % (20 * batch_size) == 0:
                 gc.collect()
 
-        logger.info(f"Stage 1 Results:")
+        logger.info("Stage 1 Results:")
         logger.info(f"  High confidence detections: {len(all_detections)}")
         logger.info(f"  Frames marked for refinement: {len(uncertain_frames)}")
         self.stats['total_frames'] = len(frames)
@@ -112,7 +112,7 @@ class CascadeChartDetector:
                         self.stats['base_detections'] += 1
                         self.stats['cascade_used'] += 1
 
-            logger.info(f"Stage 2 Results:")
+            logger.info("Stage 2 Results:")
             logger.info(
                 f"  Base model detections: {self.stats['base_detections']}")
             logger.info(
