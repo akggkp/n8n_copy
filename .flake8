@@ -1,5 +1,4 @@
 ﻿[flake8]
-exclude = .venv,__pycache__,.git,.pytest_cache
+exclude = .venv,__pycache__,.git
 max-line-length = 127
-max-complexity = 20
 ignore = C901

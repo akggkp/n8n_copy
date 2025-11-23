@@ -93,10 +93,9 @@ async def startup_event():
         device = os.getenv("EMBEDDING_DEVICE", "cpu")
 
         logger.info(f"Initializing embeddings client with model: {model_name}")
-        embeddings_client = EmbeddingsClient(
-            model_name=model_name,
-            faiss_index_dir=faiss_dir,
-            device=device
+            model_name = model_name,
+            faiss_index_dir = faiss_dir,
+            device = device
         )
         logger.info("Embeddings client initialized successfully")
     except Exception as e:
@@ -104,7 +103,7 @@ async def startup_event():
         raise
 
 
-@app.on_event("shutdown")
+@ app.on_event("shutdown")
 async def shutdown_event():
     """Save indices on shutdown"""
     try:
@@ -120,7 +119,7 @@ async def shutdown_event():
 # HEALTH CHECK
 # ============================================================================
 
-@app.get("/health")
+@ app.get("/health")
 async def health_check():
     """Health check endpoint"""
     try:
