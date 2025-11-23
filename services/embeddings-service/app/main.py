@@ -93,9 +93,11 @@ async def startup_event():
         device = os.getenv("EMBEDDING_DEVICE", "cpu")
 
         logger.info(f"Initializing embeddings client with model: {model_name}")
-            model_name = model_name,
-            faiss_index_dir = faiss_dir,
-            device = device
+        global embeddings_client
+        embeddings_client = EmbeddingsClient(
+            model_name=model_name,
+            faiss_index_dir=faiss_dir,
+            device=device
         )
         logger.info("Embeddings client initialized successfully")
     except Exception as e:
