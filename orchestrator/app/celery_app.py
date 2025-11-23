@@ -1,13 +1,13 @@
-"""Celery application configuration"""
+from config import Config
 import os
 import sys
 from celery import Celery
 from celery.schedules import crontab
+"""Celery application configuration"""
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config import Config
 
 # Create Celery app
 celery_app = Celery(
@@ -27,8 +27,10 @@ celery_app.conf.update(
     task_time_limit=Config.CELERY_TASK_TIME_LIMIT,
     task_soft_time_limit=Config.CELERY_TASK_SOFT_TIME_LIMIT,
     task_acks_late=True,
-    worker_prefetch_multiplier=1,  # Process one task at a time (memory optimization)
-    worker_max_tasks_per_child=10,  # Restart worker after 10 tasks (prevent memory leaks)
+    # Process one task at a time (memory optimization)
+    worker_prefetch_multiplier=1,
+    # Restart worker after 10 tasks (prevent memory leaks)
+    worker_max_tasks_per_child=10,
 )
 
 # Beat schedule for periodic tasks

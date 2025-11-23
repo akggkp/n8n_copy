@@ -7,7 +7,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Database URL from environment
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://tradingai:password@postgres:5432/trading_education')
+DATABASE_URL = os.getenv(
+    'DATABASE_URL',
+    'postgresql://tradingai:password@postgres:5432/trading_education')
 
 # Create engine with connection pooling
 engine = create_engine(
@@ -32,10 +34,11 @@ SessionLocal = sessionmaker(
 # Base class for models
 Base = declarative_base()
 
+
 def get_db() -> Session:
     """
     Get database session with automatic cleanup
-    
+
     Yields:
         Session: Database session
     """
