@@ -1,5 +1,5 @@
 "# Trading AI Video Processing Pipeline
-
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/akggkp/n8n_copy?utm_source=oss&utm_medium=github&utm_campaign=akggkp%2Fn8n_copy&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 ## Overview
 
 Automated pipeline for extracting trading strategies from educational videos using:
