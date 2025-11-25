@@ -137,3 +137,4 @@ class LlamaClient:
         except Exception as e:
             logger.warning(f"Ollama health check failed: {str(e)}")
             return False
+        

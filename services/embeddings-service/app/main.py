@@ -105,7 +105,7 @@ async def startup_event():
         raise
 
 
-@ app.on_event("shutdown")
+@app.on_event("shutdown")
 async def shutdown_event():
     """Save indices on shutdown"""
     try:
@@ -121,7 +121,7 @@ async def shutdown_event():
 # HEALTH CHECK
 # ============================================================================
 
-@ app.get("/health")
+@app.get("/health")
 async def health_check():
     """Health check endpoint"""
     try:
@@ -468,3 +468,4 @@ if __name__ == "__main__":
         port=int(os.getenv("EMBEDDINGS_PORT", 8004)),
         workers=int(os.getenv("EMBEDDINGS_WORKERS", 1))
     )
+    
