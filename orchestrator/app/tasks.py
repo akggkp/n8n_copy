@@ -99,95 +99,87 @@ def validate_video(self, media_item_id, file_path, filename):
         raise
 
 
+def _update_media_item_status(db, media_item_id, status, error_message=None):
+    """Helper to update media item status in the database."""
+    try:
+        media_item = db.query(MediaItem).filter_by(id=media_item_id).first()
+        if media_item:
+            media_item.status = status
+            if error_message:
+                media_item.error_message = error_message
+            db.commit()
+    except Exception as e:
+        logger.error(f"Error updating status for media item {media_item_id}: {e}")
+        db.rollback()
+
+
+def _call_video_processor(file_path):
+    """Calls the video processor service and returns the result."""
+    session = get_retry_session()
+    response = session.post(
+        f"{VIDEO_PROCESSOR_URL}/process",
+        json={"file_path": file_path},
+        timeout=600  # 10 minutes for large videos
+    )
+    response.raise_for_status()
+    result = response.json()
+    if result.get('status') != 'success':
+        raise ValueError("Video processing failed in the external service.")
+    return result
+
+
+def _save_processing_results(db, media_item_id, result):
+    """Saves transcript and metadata from video processing."""
+    transcript_segments = result.get('transcript', [])
+    if not transcript_segments:
+        logger.warning("No transcript segments returned")
+
+    for segment in transcript_segments:
+        transcript = Transcript(
+            media_item_id=media_item_id,
+            start_time=segment['start_time'],
+            end_time=segment['end_time'],
+            text=segment['text']
+        )
+        db.add(transcript)
+
+    media_item = db.query(MediaItem).filter_by(id=media_item_id).first()
+    if media_item:
+        media_item.duration = result.get('metadata', {}).get('duration')
+        media_item.frame_count = result.get('metadata', {}).get('total_frames')
+
+    db.commit()
+    logger.info(f"Saved {len(transcript_segments)} transcript segments")
+    return len(transcript_segments)
+
+
 @shared_task(bind=True, name='app.tasks.process_video')
 def process_video(self, previous_result, file_path):
     """Process video: extract audio, transcribe, extract frames"""
+    media_item_id = previous_result.get('media_item_id')
+    logger.info(f"Processing video for media_item {media_item_id}")
+    db = SessionLocal()
     try:
-        media_item_id = previous_result.get('media_item_id')
-        logger.info(f"Processing video for media_item {media_item_id}")
+        _update_media_item_status(db, media_item_id, 'processing')
 
-        # Update status
-        db = SessionLocal()
-        try:
-            media_item = db.query(MediaItem).filter_by(
-                id=media_item_id).first()
-            if media_item:
-                media_item.status = 'processing'
-                db.commit()
-        finally:
-            db.close()
+        result = _call_video_processor(file_path)
 
-        # Call video processor service
-        session = get_retry_session()
-        response = session.post(
-            f"{VIDEO_PROCESSOR_URL}/process",
-            json={"file_path": file_path},
-            timeout=600  # 10 minutes for large videos
-        )
-        response.raise_for_status()
-
-        result = response.json()
-
-        # Validate response
-        if result.get('status') != 'success':
-            raise ValueError("Video processing failed")
-
-        transcript_segments = result.get('transcript', [])
-        if not transcript_segments:
-            logger.warning("No transcript segments returned")
-
-        # Save transcripts to database
-        db = SessionLocal()
-        try:
-            for segment in transcript_segments:
-                transcript = Transcript(
-                    media_item_id=media_item_id,
-                    start_time=segment['start_time'],
-                    end_time=segment['end_time'],
-                    text=segment['text']
-                )
-                db.add(transcript)
-
-            # Update media item
-            media_item = db.query(MediaItem).filter_by(
-                id=media_item_id).first()
-            if media_item:
-                media_item.duration = result.get(
-                    'metadata', {}).get('duration')
-                media_item.frame_count = result.get(
-                    'metadata', {}).get('total_frames')
-
-            db.commit()
-            logger.info(
-                f"Saved {len(transcript_segments)} transcript segments")
-
-        finally:
-            db.close()
+        transcript_count = _save_processing_results(db, media_item_id, result)
 
         return {
             'status': 'success',
             'media_item_id': media_item_id,
-            'transcript_count': len(transcript_segments),
+            'transcript_count': transcript_count,
             'frames': result.get('frames', []),
             'metadata': result.get('metadata', {})
         }
 
     except Exception as e:
         logger.error(f"Video processing failed: {str(e)}")
-
-        # Update status
-        db = SessionLocal()
-        try:
-            media_item = db.query(MediaItem).filter_by(
-                id=media_item_id).first()
-            if media_item:
-                media_item.status = 'failed'
-                media_item.error_message = str(e)
-                db.commit()
-        finally:
-            db.close()
-
+        _update_media_item_status(db, media_item_id, 'failed', error_message=str(e))
         raise
+    finally:
+        db.close()
 
 
 @shared_task(bind=True, name='app.tasks.detect_keywords')

@@ -468,4 +468,3 @@ if __name__ == "__main__":
         port=int(os.getenv("EMBEDDINGS_PORT", 8004)),
         workers=int(os.getenv("EMBEDDINGS_WORKERS", 1))
     )
-    

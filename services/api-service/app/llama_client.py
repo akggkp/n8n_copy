@@ -53,7 +53,15 @@ class LlamaClient:
 
             context = "\n".join(context_lines)
 
-            prompt = f"Based on these trading video extracts about {keyword}:\n\n{context}\n\nGenerate a concise trading strategy that uses {keyword}. Include:\n1. Entry signals\n2. Exit criteria\n3. Risk management rules\n4. Expected outcomes\n\nStrategy:"
+            prompt = (
+                f"Based on these trading video extracts about {keyword}:\n\n{context}\n\n"
+                f"Generate a concise trading strategy that uses {keyword}. Include:\n"
+                "1. Entry signals\n"
+                "2. Exit criteria\n"
+                "3. Risk management rules\n"
+                "4. Expected outcomes\n\n"
+                "Strategy:"
+            )
 
             # Call Ollama API
             response = requests.post(
@@ -102,7 +110,10 @@ class LlamaClient:
             all_text = " ".join([ex.get('transcript', '')
                                 for ex in examples[:10]])
 
-            prompt = f"Summarize the key concepts and trading insights about {keyword} based on:\n\n{all_text[:1000]}\n\nSummary (3-5 sentences):"
+            prompt = (
+                f"Summarize the key concepts and trading insights about {keyword} "
+                f"based on:\n\n{all_text[:1000]}\n\nSummary (3-5 sentences):"
+            )
 
             response = requests.post(
                 f"{self.ollama_url}/api/generate",
@@ -137,4 +148,3 @@ class LlamaClient:
         except Exception as e:
             logger.warning(f"Ollama health check failed: {str(e)}")
             return False
-        

@@ -270,33 +270,55 @@ def run_backtest_simulation(
         raise
 
 
+def _check_rsi_lt_30(bar: Dict, **kwargs) -> bool:
+    """Checks if RSI is less than 30."""
+    return bar.get('rsi', 50) < 30
+
+
+def _check_macd_crossover(bar: Dict, **kwargs) -> bool:
+    """Mock check for MACD histogram crossover."""
+    return np.random.random() >= 0.5
+
+
+def _check_resistance_breakout(bar: Dict, **kwargs) -> bool:
+    """Checks if close price is above resistance."""
+    return bar['close'] > bar.get('resistance', bar['high'])
+
+
+def _check_default_entry(bar: Dict, **kwargs) -> bool:
+    """Default entry: buy when RSI < 40."""
+    return bar.get('rsi', 50) < 40
+
+
+ENTRY_RULE_CHECKS = {
+    'rsi < 30': _check_rsi_lt_30,
+    'rsi<30': _check_rsi_lt_30,
+    'macd': _check_macd_crossover,
+    'breakout': _check_resistance_breakout,
+    'close > resistance': _check_resistance_breakout,
+    'default_entry': _check_default_entry
+}
+
+
 def evaluate_entry_rules(
         rules: List[str],
         bar: Dict,
         history: List[Dict]) -> bool:
-    """Evaluate entry conditions"""
+    """Evaluate entry conditions by checking all rules against the current bar."""
     try:
         for rule in rules:
             rule_lower = rule.lower()
-
-            if 'rsi < 30' in rule_lower or 'rsi<30' in rule_lower:
-                if bar.get('rsi', 50) >= 30:
-                    return False
-
-            elif 'macd' in rule_lower and 'histogram > 0' in rule_lower:
-                # Mock MACD check
-                if np.random.random() < 0.5:
-                    return False
-
-            elif 'close > resistance' in rule_lower or 'breakout' in rule_lower:
-                if bar['close'] <= bar.get('resistance', bar['high']):
-                    return False
-
-            elif 'default_entry' in rule_lower:
-                # Default entry: buy when RSI < 40
-                if bar.get('rsi', 50) >= 40:
-                    return False
-
+            triggered = False
+            for keyword, checker in ENTRY_RULE_CHECKS.items():
+                if keyword in rule_lower:
+                    if not checker(bar=bar, history=history):
+                        return False  # If any rule check fails, we don't enter
+                    triggered = True
+                    break
+            if not triggered:
+                # If no keyword matched, we might want to log this or handle it.
+                # For now, we'll assume it's not a hard failure.
+                pass
         return True
     except Exception as e:
         logger.error(f"Error evaluating entry rules: {str(e)}")

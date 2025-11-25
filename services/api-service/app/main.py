@@ -481,6 +481,102 @@ async def search_embeddings(
 # LLAMA DATASET ENDPOINT
 # ============================================================================
 
+def _query_keyword_hits(db: Session, keyword: Optional[str], category: Optional[str], top_k: int):
+    """Queries the database for keyword hits."""
+    from app.models import KeywordHit
+
+    query = db.query(KeywordHit).filter(KeywordHit.confidence >= 0.7)
+
+    if keyword:
+        query = query.filter(KeywordHit.keyword.ilike(f"%{keyword}%"))
+    if category:
+        query = query.filter(KeywordHit.category == category)
+
+    return query.limit(top_k).all()
+
+
+def _get_media_item_for_hit(db, hit):
+    from app.models import MediaItem
+    return db.query(MediaItem).filter_by(id=hit.media_item_id).first()
+
+
+def _get_clips_for_hit(db, hit):
+    from app.models import Clip
+    return db.query(Clip).filter_by(keyword_hit_id=hit.id).all()
+
+
+def _get_transcripts_for_hit(db, hit):
+    from app.models import Transcript
+    return db.query(Transcript).filter_by(media_item_id=hit.media_item_id).all()
+
+
+def _build_context_text(transcripts, hit):
+    context_segments = [
+        t for t in transcripts
+        if hit.start_time - 10 <= t.start_time <= hit.end_time + 10
+    ]
+    return " ".join([t.text for t in context_segments])
+
+
+def _get_embedding_for_hit(db, hit):
+    from app.models import Embedding
+    from sqlalchemy import and_
+    embedding = db.query(Embedding).filter(
+        and_(
+            Embedding.media_item_id == hit.media_item_id,
+            Embedding.embedding_type == "keyword",
+            Embedding.reference_id == hit.id
+        )
+    ).first()
+    return embedding.embedding_vector if embedding else None
+
+
+def _detect_concepts(text):
+    trading_terms = ["support", "resistance", "breakout", "momentum", "trend"]
+    return [term for term in trading_terms if term.lower() in text.lower()]
+
+
+def _build_example_dict(hit, media_item, clips, context_text, full_transcript, detected_concepts, embeddings_vector):
+    example = {
+        "clip_id": f"{media_item.video_id}_{hit.keyword}_{hit.id}",
+        "transcript": context_text.strip() if context_text else full_transcript[:500],
+        "keyword": hit.keyword,
+        "category": hit.category,
+        "timestamp": hit.start_time,
+        "confidence": hit.confidence,
+        "clip_url": f"/clip/{clips[0].id}/download" if clips else None,
+        "detected_concepts": detected_concepts,
+        "context_text": hit.context_text or context_text[:200]
+    }
+    if embeddings_vector:
+        example["embeddings"] = embeddings_vector
+    return example
+
+
+def _create_example_from_hit(db: Session, hit: 'KeywordHit', include_embeddings: bool):
+    """Creates a Llama example dictionary from a KeywordHit."""
+    try:
+        media_item = _get_media_item_for_hit(db, hit)
+        if not media_item:
+            return None
+
+        clips = _get_clips_for_hit(db, hit)
+        transcripts = _get_transcripts_for_hit(db, hit)
+
+        context_text = _build_context_text(transcripts, hit)
+        full_transcript = " ".join([t.text for t in transcripts])
+
+        embeddings_vector = _get_embedding_for_hit(db, hit) if include_embeddings else None
+
+        detected_concepts = _detect_concepts(context_text)
+
+        return _build_example_dict(hit, media_item, clips, context_text, full_transcript, detected_concepts, embeddings_vector)
+
+    except Exception as e:
+        logger.error(f"Error processing keyword hit {hit.id}: {str(e)}")
+        return None
+
+
 @app.get("/llama/examples", tags=["Llama Dataset"])
 async def get_llama_examples(
     keyword: Optional[str] = Query(None),
@@ -502,92 +598,13 @@ async def get_llama_examples(
     - List of examples with transcripts, clips, concepts, and optional embeddings
     """
     try:
-        from app.models import KeywordHit, Clip, Transcript, Embedding, MediaItem
-        from sqlalchemy import and_
-
-        # Base query: keyword_hits
-        query = db.query(KeywordHit).filter(KeywordHit.confidence >= 0.7)
-
-        if keyword:
-            query = query.filter(KeywordHit.keyword.ilike(f"%{keyword}%"))
-        if category:
-            query = query.filter(KeywordHit.category == category)
-
-        keyword_hits = query.limit(top_k).all()
+        keyword_hits = _query_keyword_hits(db, keyword, category, top_k)
 
         examples = []
         for hit in keyword_hits:
-            try:
-                # Get media item for source reference
-                media_item = db.query(MediaItem).filter_by(
-                    id=hit.media_item_id).first()
-                if not media_item:
-                    continue
-
-                # Get associated clips
-                clips = db.query(Clip).filter_by(keyword_hit_id=hit.id).all()
-
-                # Get transcript segments around keyword timestamp
-                transcripts = db.query(Transcript).filter_by(
-                    media_item_id=hit.media_item_id).all()
-
-                # Build context: segments within ±10 seconds of keyword
-                context_segments = [
-                    t for t in transcripts
-                    if hit.start_time - 10 <= t.start_time <= hit.end_time + 10
-                ]
-                context_text = " ".join([t.text for t in context_segments])
-                full_transcript = " ".join([t.text for t in transcripts])
-
-                # Get embeddings if requested
-                embeddings_vector = None
-                if include_embeddings:
-                    embedding = db.query(Embedding).filter(
-                        and_(
-                            Embedding.media_item_id == hit.media_item_id,
-                            Embedding.embedding_type == "keyword",
-                            Embedding.reference_id == hit.id
-                        )
-                    ).first()
-                    if embedding:
-                        embeddings_vector = embedding.embedding_vector
-
-                # Get detected concepts (from ml_concepts table if available)
-                # For now, extract keywords from transcript
-                detected_concepts = []
-                if context_text:
-                    # Simple extraction: look for common trading terms
-                    trading_terms = [
-                        "support",
-                        "resistance",
-                        "breakout",
-                        "momentum",
-                        "trend"]
-                    detected_concepts = [
-                        term for term in trading_terms if term.lower() in context_text.lower()]
-
-                # Build example
-                example = {
-                    "clip_id": f"{media_item.video_id}_{hit.keyword}_{hit.id}",
-                    "transcript": context_text.strip() if context_text else full_transcript[:500],
-                    "keyword": hit.keyword,
-                    "category": hit.category,
-                    "timestamp": hit.start_time,
-                    "confidence": hit.confidence,
-                    "clip_url": f"/clip/{clips[0].id}/download" if clips else None,
-                    "detected_concepts": detected_concepts,
-                    "context_text": hit.context_text or context_text[:200]
-                }
-
-                if include_embeddings and embeddings_vector:
-                    example["embeddings"] = embeddings_vector
-
+            example = _create_example_from_hit(db, hit, include_embeddings)
+            if example:
                 examples.append(example)
-
-            except Exception as e:
-                logger.error(
-                    f"Error processing keyword hit {hit.id}: {str(e)}")
-                continue
 
         return {
             "examples": examples,
